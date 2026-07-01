@@ -5,10 +5,10 @@ This quickstart is written specifically for native iOS and Android apps that are
 ## WHAT YOU WILL NEED
 * Access to a trial or paid Approov account
 * The `approov` command line tool [installed](https://approov.io/docs/latest/approov-installation/) with access to your account
-* [Visual Studio](https://visualstudio.microsoft.com/vs/mac/) with Xamarin extensions (Mac version 17.4.3 is used in this guide)
+* [Visual Studio 2022 (Windows) or Rider (Mac)](https://visualstudio.microsoft.com/)
 * The contents of the folder containing this README
-* An Apple mobile device with iOS 11 or higher or an Android 5.0+ device. Alternatively, iOS simulator or Android emulator would suffice
-* Nuget packages supporting the native Approov SDK: `ApproovService` version `3.1.4`, `ApproovHttpClient` version `3.1.0`, `ApproovRefit` version `6.3.2`  and `Square.OkHttp3` version `4.9.3` if targetting Android
+* An Apple mobile device with iOS 15 or higher or an Android 5.0+ device. Alternatively, iOS simulator or Android emulator would suffice
+* NuGet package: `Approov.Service.Maui` version `3.5.11`
 
 ## RUNNING THE SHAPES APP WITHOUT APPROOV
 
@@ -38,13 +38,7 @@ This contacts `https://shapes.approov.io/v1/shapes` to get the name of a random 
 
 ## ADD THE APPROOV SDK
 
-The Approov SDK is available as a NuGet package in the default `nuget.org` repository and is conveniently named `ApproovService`. Select `Project` and `Manage NuGet Packages...` then select `Browse` and search for the `ApproovService` package. Additionally, you need to remove any reference to `System.Net.Http` package from the `using` directive, since a custom subclass, `ApproovHttpClient` implements its functionality and is part of the `ApproovHttpClient` package. The Android native bindings provided by the `ApproovService` make use of the `OkHttp` network implementation and so the `Square.OkHttp3-4.9.3` needs also to be installed.
-
-## REPLACE THE REFIT PACKAGE
-
-Uninstall the original `Refit` package and find and install the latest version of `ApproovRefit`, in this case `6.3.2`. Your project structure should now look like this:
-
-![Final Project View](readme-images/final-project-view.png)
+The Approov SDK is available as a NuGet package in the default `nuget.org` repository. Select `Project` and `Manage NuGet Packages...` then select `Browse` and search for `Approov.Service.Maui`. Select and install version `3.5.11`. The `Approov.Service.Maui` package works alongside the existing `Refit` package — no additional OkHttp or Approov-specific Refit package is required.
 
 ## ENSURE THE SHAPES API IS PROTECTED
 
@@ -71,7 +65,7 @@ public MainPage()
     httpClient = new HttpClient();
     /* Uncomment the lines bellow to use Approov SDK */
     //ApproovService.Initialize("<enter-your-config-string-here>");
-    //httpClient = ApproovService.CreateHttpClient();
+    //httpClient = new ApproovHttpClient();
 ```
 Change the commented out lines so the code becomes:
 ```C#
@@ -85,7 +79,7 @@ public MainPage()
     //httpClient = new HttpClient();
     /* Uncomment the lines bellow to use Approov SDK */
     ApproovService.Initialize("<enter-your-config-string-here>");
-    httpClient = ApproovService.CreateHttpClient();
+    httpClient = new ApproovHttpClient();
 ```
 
 The Approov SDK needs a configuration string to identify the account associated with the app. It will have been provided in the Approov onboarding email (it will be something like `#123456#K/XPlLtfcwnWkzv99Wj5VmAxo4CrU267J1KlQyoz8Qo=`). Copy this string replacing the text `<enter-your-config-string-here>`.
