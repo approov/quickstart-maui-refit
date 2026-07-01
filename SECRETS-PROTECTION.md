@@ -56,7 +56,8 @@ In this case it is possible to make an explicit call at runtime to obtain the se
 ```csharp
 try
 {
-    string secret = ApproovService.FetchSecureString("your-secret-name", null);
+    var result = ApproovService.FetchSecureString("your-secret-name", null);
+    string? secret = result.SecureString;
     // use secret as required, but never cache or store its value
     // secret will be null if the provided key is not defined
 }

@@ -190,7 +190,7 @@ static string endpointVersion = "v1";
 string shapes_api_key = "shapes_api_key_placeholder";
 ....
 ApproovService.AddSubstitutionHeader("Api-Key", null);
-ApproovService.DefaultRequestHeaders.Add("Api-Key", shapes_api_key);
+httpClient.DefaultRequestHeaders.Add("Api-Key", shapes_api_key);
 ```
 
 You must inform Approov that it should map `shapes_api_key_placeholder` to `yXClypapWNHIifHUWmBIyPFAm` (the actual API key) in requests as follows:
