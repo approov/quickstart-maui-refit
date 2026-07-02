@@ -1,6 +1,6 @@
 # Usage
 
-This document covers common patterns for integrating `Approov.Service.Maui` into a .NET MAUI app using [`Refit`](https://github.com/reactiveui/refit). For the full API reference see the [service layer USAGE.md](https://github.com/charlesoj6205/approov-service-maui/blob/approov-service-muai/USAGE.md).
+This document covers common patterns for integrating `Approov.Service.Maui` into a .NET MAUI app using [`Refit`](https://github.com/reactiveui/refit). For the full API reference see the [service layer USAGE.md](https://github.com/approov/approov-service-net-httpclient/blob/main/USAGE.md).
 
 ## Setting Up in MauiProgram.cs
 

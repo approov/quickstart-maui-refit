@@ -6,17 +6,25 @@ This page provides all the steps for integrating Approov into your app. Addition
 
 To follow this guide you should have received an onboarding email for a trial or paid Approov account.
 
-Note that the minimum OS requirement is iOS 15 and Android API 21 (Android 5.0). You cannot use Approov in apps that support OS versions older than these.
+Note that the minimum OS requirement is iOS 15 and Android API 23 (Android 6.0). You cannot use Approov in apps that support OS versions older than these.
 
-## ADDING THE APPROOV SERVICE PACKAGE
+## ADDING THE APPROOV SERVICE LAYER
 
-The Approov integration is available via [`NuGet`](https://www.nuget.org/). Add the following package to your project:
+The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it alongside your app:
 
 ```
-Install-Package Approov.Service.Maui -Version 3.5.11
+git clone https://github.com/approov/approov-service-net-httpclient.git
 ```
 
-This package is an open source wrapper layer that allows you to easily use Approov with `HttpClient` and Refit. It has a further dependency on the closed source [Approov SDK](https://github.com/approov/approov-ios-sdk) for iOS and the Approov Android SDK for Android. The `Approov.Service.Maui` package works alongside the `Refit` package in the same project — no separate Approov-specific Refit package is required.
+Then add a `ProjectReference` to your app's `.csproj`:
+
+```xml
+<ItemGroup>
+    <ProjectReference Include="path\to\approov-service-net-httpclient\ApproovService.MAUI\ApproovService.MAUI.csproj" />
+</ItemGroup>
+```
+
+This project is an open source wrapper layer that allows you to easily use Approov with `HttpClient` and Refit. It includes the native [Approov SDK](https://github.com/approov/approov-ios-sdk) for iOS and the Approov Android SDK for Android, so no additional setup is required. The service layer works alongside the `Refit` package in the same project — no separate Approov-specific Refit package is required.
 
 ## ANDROID MANIFEST CHANGES
 
@@ -68,4 +76,4 @@ To protect your APIs and/or secrets there are further steps. Approov provides tw
 
 See [USAGE](USAGE.md) for practical integration patterns including DI setup, bypass mode, and error handling.
 
-See [REFERENCE](https://github.com/charlesoj6205/approov-service-maui/blob/approov-service-muai/REFERENCE.md) for the full `ApproovService` API surface.
+See [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/main/REFERENCE.md) for the full `ApproovService` API surface.

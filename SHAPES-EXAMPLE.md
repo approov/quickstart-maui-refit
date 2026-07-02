@@ -7,8 +7,8 @@ This quickstart is written specifically for native iOS and Android apps that are
 * The `approov` command line tool [installed](https://approov.io/docs/latest/approov-installation/) with access to your account
 * [Visual Studio 2022 (Windows) or Rider (Mac)](https://visualstudio.microsoft.com/)
 * The contents of the folder containing this README
-* An Apple mobile device with iOS 15 or higher or an Android 5.0+ device. Alternatively, iOS simulator or Android emulator would suffice
-* NuGet package: `Approov.Service.Maui` version `3.5.11`
+* An Apple mobile device with iOS 15 or higher or an Android 6.0+ device. Alternatively, iOS simulator or Android emulator would suffice
+* The [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository, cloned alongside this one (see [ADD THE APPROOV SDK](#add-the-approov-sdk))
 
 ## RUNNING THE SHAPES APP WITHOUT APPROOV
 
@@ -38,7 +38,19 @@ This contacts `https://shapes.approov.io/v1/shapes` to get the name of a random 
 
 ## ADD THE APPROOV SDK
 
-The Approov SDK is available as a NuGet package in the default `nuget.org` repository. Select `Project` and `Manage NuGet Packages...` then select `Browse` and search for `Approov.Service.Maui`. Select and install version `3.5.11`. The `Approov.Service.Maui` package works alongside the existing `Refit` package — no additional OkHttp or Approov-specific Refit package is required.
+The Approov service layer is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it as a sibling of this quickstart repository:
+
+```
+git clone https://github.com/approov/approov-service-net-httpclient.git
+```
+
+The `ShapesApp` project already contains the required `ProjectReference`, which expects the service layer repository to be located alongside this one:
+
+```xml
+<ProjectReference Include="..\..\approov-service-net-httpclient\ApproovService.MAUI\ApproovService.MAUI.csproj" />
+```
+
+The native Approov SDKs for Android and iOS are included in the service layer repository, so no additional setup is required. The service layer works alongside the existing `Refit` package — no additional OkHttp or Approov-specific Refit package is required.
 
 ## ENSURE THE SHAPES API IS PROTECTED
 
