@@ -25,7 +25,7 @@ public partial class MainPage : ContentPage
         httpClient = new HttpClient();
         /* UNCOMMENT the lines bellow to use Approov SDK */
         //ApproovService.Initialize("<enter-your-config-string-here>");
-        //httpClient = ApproovService.CreateHttpClient();
+        //httpClient = new ApproovHttpClient();
         // Add substitution header: Uncomment if using SECRETS-PROTECTION
         //ApproovService.AddSubstitutionHeader("Api-Key", null);
         httpClient.BaseAddress = new Uri(baseURL);
