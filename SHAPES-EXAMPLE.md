@@ -1,20 +1,41 @@
 # SHAPES EXAMPLE
 
-This quickstart is written specifically for native iOS and Android apps that are written in C# for making the API calls that you wish to protect with Approov. This quickstart provides a step-by-step example of integrating Approov into an app, making use of a custom implementation of [Refit](https://github.com/reactiveui/refit), an automatic type-safe REST library. The example app uses a simple `Shapes` example that shows a geometric shape based on a request to an API backend that can be protected with Approov.
+This quickstart walks you, step by step, through protecting a real app with Approov. It is written for iOS and Android apps built with **.NET MAUI** that make API calls using [`HttpClient`](https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httpclient) through [Refit](https://github.com/reactiveui/refit), an automatic type-safe REST library. You will start from a plain, unprotected app and add Approov to it one small change at a time. The example uses .NET 9.
+
+If you just want the integration steps for your own app rather than this tutorial, see the [README](README.md) instead.
 
 ## WHAT YOU WILL NEED
 * Access to a trial or paid Approov account
 * The `approov` command line tool [installed](https://approov.io/docs/latest/approov-installation/) with access to your account
 * [Visual Studio 2022 (Windows) or Rider (Mac)](https://visualstudio.microsoft.com/)
-* The contents of the folder containing this README
-* An Apple mobile device with iOS 15 or higher or an Android 6.0+ device. Alternatively, iOS simulator or Android emulator would suffice
-* The [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository, cloned alongside this one (see [ADD THE APPROOV SDK](#add-the-approov-sdk))
+* A Mac with a recent version of Xcode, accessed from Visual Studio using `Pair To Mac`, if you are building the iOS app
+* The contents of this repository
+* An Apple mobile device with iOS 15+ or an Android 6.0+ device. An iOS simulator or Android emulator will also work
+* The [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository, cloned alongside this one (see [ADD THE APPROOV SERVICE LAYER](#add-the-approov-service-layer))
+
+## HOW THIS QUICKSTART WORKS
+
+The whole tutorial is driven by editing a **single file**, [`MainPage.xaml.cs`](ShapesApp/MainPage.xaml.cs). To keep things easy to follow, that file is already laid out as a series of **stages**, each marked with a `STAGE` comment. You move forward simply by changing one setting and commenting/uncommenting the lines for the next stage:
+
+| Stage | Endpoint | What it demonstrates |
+| ----- | -------- | -------------------- |
+| **Stage 1** | `v1` | The starting point — a plain `HttpClient`, driven by a Refit interface, with an API key hard-coded into the app. No Approov. |
+| **Stage 2** | `v3` | **API protection** — `ApproovHttpClient` adds a verified Approov token to every request. |
+| **Stage 3** | `v5` | Adds an **HTTP message signature** as a second, independent proof on top of the token. |
+
+The endpoint version is controlled by a single `ENDPOINT_VERSION` constant that is baked into the base URL. The Refit interface paths (`/hello/`, `/shapes/`) therefore never change as you move between stages.
+
+There is also a **Secrets Protection** section at the end. This is an *alternative* to Stages 2–3 for when you cannot change the backend: instead of checking a token server-side, Approov keeps your API key out of the app and only hands it to genuine app instances at runtime.
+
+Work through the sections in order. Each one tells you exactly which lines to change and ends with a short note on what you just achieved.
 
 ## RUNNING THE SHAPES APP WITHOUT APPROOV
 
-Open the `ShapesApp.sln` solution in the `ShapesApp` folder using `File->Open` in Visual Studio. There are three projects in the solution, a shared `ShapesApp` project, one targeting iOS, `ShapesApp.iOS` and another targeting Android OS, `ShapesApp.Android`. We will use the iOS version in this document however there are minor differences with the Android application, i.e. codesigning and generating `.ipa` or `.apk` files. Regardless of which OS you choose to target, the source code is shared and is available in the common file `MainPage.xaml.cs`. You can target your prefered platform by selecting the Build target of Visual Studio.
+> **This is Stage 1.** The app is unprotected — we run it first so you can see the starting point before Approov is added.
 
-If running the iOS application, select the `Info.plist` file and change the Bundle Identifier to contain a unique string (i.e. your company name), since Apple will reject the default one. Select the appropriate device/simulator target and run the ShapesApp application.
+Open the `ShapesApp.sln` solution in the `ShapesApp` folder using `File->Open` in Visual Studio. The application targets both iOS and Android. This guide targets iOS; the Android app differs only in codesigning and in generating `.ipa` or `.apk` files. The source code is shared between platforms in the common file `MainPage.xaml.cs`, so the edits below apply to both. Choose your platform with the Build target in Visual Studio.
+
+If running the iOS application, select the `Info.plist` file and change the Bundle Identifier to contain a unique string (e.g. your company name), since Apple will reject the default one. Select the appropriate device/simulator target and run the ShapesApp application.
 
 Once the application is running you will see two buttons:
 
@@ -22,23 +43,25 @@ Once the application is running you will see two buttons:
     <img src="readme-images/app-startup.png" width="256" title="Shapes App Startup">
 </p>
 
-Click on the `Hello` button and you should see this:
+Press the `Get Hello` button and you should see this:
 
 <p>
     <img src="readme-images/hello-okay.png" width="256" title="Hello Okay">
 </p>
 
-This checks the connectivity by connecting to the endpoint `https://shapes.approov.io/v1/hello`. Now press the `Shape` button and you will see this:
+This checks connectivity by calling `https://shapes.approov.io/v1/hello`. Now press the `Get Shape` button and you will see this:
 
 <p>
     <img src="readme-images/shapes-good.png" width="256" title="Shapes Good">
 </p>
 
-This contacts `https://shapes.approov.io/v1/shapes` to get the name of a random shape. It gets the http status code 200  because this endpoint is protected with a secret key which we hard coded in the source code, and therefore can be easily extracted from the app. Next, you will add Approov into the app so that it can generate valid Approov tokens and get shapes using an approov token.
+This calls `https://shapes.approov.io/v1/shapes` to get the name of a random shape. It succeeds (HTTP status `200`) because this endpoint is protected only by an API key that is hard-coded into the app — and which could therefore be extracted from the app by an attacker.
 
-## ADD THE APPROOV SDK
+*What just happened:* the app works, but its API key is exposed. Over the next stages you will add Approov so the backend can be sure requests come from a genuine, untampered instance of your app.
 
-The Approov service layer is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it as a sibling of this quickstart repository:
+## ADD THE APPROOV SERVICE LAYER
+
+The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it as a sibling of this quickstart repository:
 
 ```
 git clone https://github.com/approov/approov-service-net-httpclient.git
@@ -50,82 +73,73 @@ The `ShapesApp` project already contains the required `ProjectReference`, which 
 <ProjectReference Include="..\..\approov-service-net-httpclient\ApproovService.MAUI\ApproovService.MAUI.csproj" />
 ```
 
-The native Approov SDKs for Android and iOS are included in the service layer repository, so no additional setup is required. The service layer works alongside the existing `Refit` package — no additional OkHttp or Approov-specific Refit package is required.
+This service layer is an open source wrapper that lets you use Approov with `HttpClient`. It bundles the native Approov SDKs for both Android and iOS, so no additional SDK setup is required. It works alongside the existing `Refit` package — no additional OkHttp or Approov-specific Refit package is required.
+
+Your project structure should now look like this:
+
+![Final Project View](readme-images/final-project-view.png)
 
 ## ENSURE THE SHAPES API IS PROTECTED
 
-In order for Approov tokens to be generated for `https://shapes.approov.io/v3/shapes` it is necessary to inform Approov about it: 
+For Approov tokens to be generated for `shapes.approov.io` you must first tell Approov about the domain:
 
 ```
 approov api -add shapes.approov.io
 ```
 
-Tokens for this domain will be automatically signed with the specific secret for this domain, rather than the normal one for your account. 
+Tokens for this domain are automatically signed with the specific secret for the domain, rather than the normal one for your account.
 
 ## MODIFY THE APP TO USE APPROOV
 
-To use Approov all you have to do is comment out the code using `HttpClient` and uncomment the line following that code, which enables the custom `ApproovHttpClient` code. Find the following lines in `MainPage.xaml.cs` source file:
+> **This is Stage 2 (endpoint `v3`).** The app will now send a verified Approov token alongside the API key.
+
+Every change here is in `MainPage.xaml.cs`, guided by the `STAGE` comments already in the file. Make the following five edits. Note that the Refit `IApiInterface` at the bottom of the file does **not** need to change — the endpoint version is set once via `ENDPOINT_VERSION`.
+
+**1. Switch the endpoint to `v3`** — the endpoint that checks the Approov token (as well as the API key):
 
 ```C#
-/* COMMENT this line if using Approov */
-private static HttpClient httpClient;
-/* UNCOMMENT this line if using Approov */
-//private static ApproovHttpClient httpClient;
-public MainPage()
-{
-    /* Comment out the line to use Approov SDK */
-    httpClient = new HttpClient();
-    /* Uncomment the lines bellow to use Approov SDK */
-    //ApproovService.Initialize("<enter-your-config-string-here>");
-    //httpClient = new ApproovHttpClient();
+const string ENDPOINT_VERSION = "v3";
 ```
-Change the commented out lines so the code becomes:
+
+**2. Add your Approov configuration string.** The SDK needs this to identify your account. It was included in your Approov onboarding email (something like `#123456#K/XPlLtfcwnWkzv99Wj5VmAxo4CrU267J1KlQyoz8Qo=`). Replace the placeholder:
+
 ```C#
-/* COMMENT this line if using Approov */
+const string APPROOV_CONFIG = "<enter-your-config-string-here>";
+```
+
+**3. Enable the Approov service layer** by uncommenting the `using Approov;` directive near the top of the file:
+
+```C#
+using Approov;
+```
+
+**4. Use `ApproovHttpClient` instead of `HttpClient`.** Comment out the Stage 1 field declaration and uncomment the Stage 2 one:
+
+```C#
 //private static HttpClient httpClient;
-/* UNCOMMENT this line if using Approov */
 private static ApproovHttpClient httpClient;
-public MainPage()
-{
-    /* Comment out the line to use Approov SDK */
-    //httpClient = new HttpClient();
-    /* Uncomment the lines bellow to use Approov SDK */
-    ApproovService.Initialize("<enter-your-config-string-here>");
-    httpClient = new ApproovHttpClient();
 ```
 
-The Approov SDK needs a configuration string to identify the account associated with the app. It will have been provided in the Approov onboarding email (it will be something like `#123456#K/XPlLtfcwnWkzv99Wj5VmAxo4CrU267J1KlQyoz8Qo=`). Copy this string replacing the text `<enter-your-config-string-here>`.
-
-You will also need to uncomment the `using Approov;` directive to the top of the `MainPage.xaml.cs` source file.
-The `ApproovHttpClient` class adds the `Approov-Token` header and also applies pinning for the connections to ensure that no Man-in-the-Middle can eavesdrop on any communication being made. 
-
-Finally, please, change the url to point to the Approov protected endpoint:
+**5. Initialize Approov and create the client.** In the constructor, comment out the Stage 1 line and uncomment the two Stage 2 lines:
 
 ```C#
-public interface IApiInterface
-{
-    [Get("/v1/hello/")]
-    Task<Dictionary<string, string>> GetHello();
-    [Get("/v1/shapes/")]
-    Task<Dictionary<string, string>> GetShape();
-}
-```
-to point to `v3`:
+// STAGE 1 — comment this out
+//httpClient = new HttpClient();
 
-```C#
-public interface IApiInterface
-{
-    [Get("/v3/hello/")]
-    Task<Dictionary<string, string>> GetHello();
-    [Get("/v3/shapes/")]
-    Task<Dictionary<string, string>> GetShape();
-}
+// STAGE 2 — uncomment these
+ApproovService.Initialize(APPROOV_CONFIG);
+httpClient = new ApproovHttpClient();
 ```
+
+`ApproovHttpClient` is a drop-in replacement for `HttpClient`, so it is passed to `RestService.For<IApiInterface>(httpClient)` exactly as before. It automatically adds the `Approov-Token` header to each request and pins the TLS connection, so that no Man-in-the-Middle can eavesdrop on the communication.
+
+*What just happened:* the app is now wired up to fetch and send Approov tokens. Before it can pass attestation on a real device, Approov needs to recognize the certificate you sign the app with — that is the next step.
 
 ## ADD YOUR SIGNING CERTIFICATE TO APPROOV
-You should add the signing certificate used to sign apps so that Approov can recognize your app as being official.
 
-Codesigning must also be enabled, if you need assistance please check [Microsoft's codesigning support](https://docs.microsoft.com/en-us/xamarin/ios/deploy-test/provisioning/) or [Android deploy signing](https://docs.microsoft.com/en-us/xamarin/android/deploy-test/signing/?tabs=macos). Make sure you have selected the correct project (Shapes.App.iOS), build mode (Release) and target device (Generic Device) settings.
+You must add the signing certificate used to sign your apps so that Approov can recognize your app as being official.
+
+Codesigning must also be enabled. If you need assistance, see [Microsoft's codesigning support](https://docs.microsoft.com/en-us/xamarin/ios/deploy-test/provisioning/) or [Android deploy signing](https://docs.microsoft.com/en-us/xamarin/android/deploy-test/signing/?tabs=macos).
 
 ### Android
 Add the local certificate used to sign apps in Android Studio. The following assumes it is in PKCS12 format:
@@ -134,78 +148,128 @@ Add the local certificate used to sign apps in Android Studio. The following ass
 approov appsigncert -add ~/.android/debug.keystore -storePassword android -autoReg
 ```
 
-Note, on Windows you need to substitute \ for / in the above command and the full path specified for the user home directory instead of ~.
+Note: on Windows, substitute `\` for `/` in the command above and use the full path to your user home directory instead of `~`.
 
-See [Android App Signing Certificates](https://approov.io/docs/latest/approov-usage-documentation/#android-app-signing-certificates) if your keystore format is not recognized or if you have any issues adding the certificate. This also provides information about adding certificates for when releasing to the Play Store. Note also that you need to apply specific [Android Obfuscation](https://approov.io/docs/latest/approov-usage-documentation/#android-obfuscation) rules when creating an app release.
+See [Android App Signing Certificates](https://approov.io/docs/latest/approov-usage-documentation/#android-app-signing-certificates) if your keystore format is not recognized or if you have any issues adding the certificate. That page also covers certificates for releasing to the Play Store. Note that you must also apply specific [Android Obfuscation](https://approov.io/docs/latest/approov-usage-documentation/#android-obfuscation) rules when creating an app release.
 
 ### iOS
-These are available in your Apple development account portal. Go to the initial screen showing program resources:
+Your certificates are available in your Apple development account portal. Go to the initial screen showing program resources:
 
 ![Apple Program Resources](readme-images/program-resources.png)
 
-Click on `Certificates` and you will be presented with the full list of development and distribution certificates for the account. Click on the certificate being used to sign applications from your particular Xcode installation and you will be presented with the following dialog:
+Click on `Certificates` and you will be presented with the full list of development and distribution certificates for the account. Click on the certificate being used to sign applications from your Xcode installation and you will be presented with the following dialog:
 
 ![Download Certificate](readme-images/download-cert.png)
 
-Now click on the `Download` button and a file with a `.cer` extension is downloaded, e.g. `development.cer`. Add it to Approov with:
+Click on the `Download` button, and a file with a `.cer` extension is downloaded, e.g. `development.cer`. Add it to Approov with:
 
 ```
 approov appsigncert -add development.cer -autoReg
 ```
 
-If it is not possible to download the correct certificate from the portal then it is also possible to [add app signing certificates from the app](https://approov.io/docs/latest/approov-usage-documentation/#adding-apple-app-signing-certificates-from-app).
+If you cannot download the correct certificate from the portal, it is also possible to [add app signing certificates from the app](https://approov.io/docs/latest/approov-usage-documentation/#adding-apple-app-signing-certificates-from-app).
 
-> **IMPORTANT:** Apps built to run on the iOS simulator are not code signed and thus auto-registration does not work for them. In this case you can consider [forcing a device ID to pass](https://approov.io/docs/latest/approov-usage-documentation/#forcing-a-device-id-to-pass) to get a valid attestation.
+> **IMPORTANT:** Apps built to run on the iOS simulator are not code signed, so auto-registration does not work for them. In that case you can [force a device ID to pass](https://approov.io/docs/latest/approov-usage-documentation/#forcing-a-device-id-to-pass) to get a valid attestation.
 
 ## RUNNING THE SHAPES APP WITH APPROOV
 
-Make sure you have selected the correct project (Shapes.App.iOS), build mode (Release) and target device (Generic Device) settings. 
+Make sure you have selected the correct build mode (Release) and target device (Generic Device) settings.
 
 ![Target Device](readme-images/target-device.png)
 
-Select the `Build` menu and then `Archive for Publishing`. Once the archive file is ready you can either `Ad Hoc`, `Enterprise` or `Play Store` depending on the platform, sign it and save it to disk.
+Select the `Build` menu and then `Publish`. Once the archive file is ready, sign it (`Ad Hoc`, `Enterprise` or `Play Store` depending on the platform) and save it to disk.
 
 ![Build IPA Result](readme-images/build-ipa-result.png)
 
-Install the `ApproovShapes.ipa` or `.apk` file on the device. You will need to remove the old app from the device first.
-If using Mac OS Catalina and targeting iOS, simply drag the `ipa` file to the device. Alternatively, using `Xcode` you can select `Window`, then `Devices and Simulators` and after selecting your device click on the small `+` sign to locate the `ipa` archive you would like to install. For Android you will need to use the command line tools provided by Google.
+Install the `ApproovShapes.ipa` or `.apk` file on the device. Remove the old app from the device first.
+
+If using a recent macOS version (later than Catalina) and targeting iOS, simply drag the `.ipa` file onto the device. Alternatively, in `Xcode` select `Window`, then `Devices and Simulators`, and after selecting your device click the small `+` sign to locate the `.ipa` archive to install. For Android you will need to use the command line tools provided by Google.
 
 ![Install IPA Visual Studio](readme-images/install-ipa.png)
 
-Launch the app and press the `Shape` button. You should now see this (or another shape):
+Launch the app and press the `Get Shape` button. You should now see a shape (or another shape):
 
 <p>
     <img src="readme-images/shapes-good.png" width="256" title="Shapes Good">
 </p>
 
-This means that the app is getting a validly signed Approov token to present to the shapes endpoint.
+*What just happened:* the app fetched a validly signed Approov token and presented it to the `v3/shapes` endpoint, which accepted it. Your API is now protected by Approov. If instead you do not get a shape, see the troubleshooting steps below.
 
 ## WHAT IF I DON'T GET SHAPES
 
-If you still don't get a valid shape then there are some things you can try. Remember this may be because the device you are using has some characteristics that cause rejection for the currently set [Security Policy](https://approov.io/docs/latest/approov-usage-documentation/#security-policies) on your account:
+If you don't get a valid shape, there are a few things to check. Remember this may be because the device you are using has characteristics that cause rejection under the [Security Policy](https://approov.io/docs/latest/approov-usage-documentation/#security-policies) currently set on your account:
 
 * Ensure that the version of the app you are running is signed with the correct certificate.
-* Look at the [`syslog`](https://developer.apple.com/documentation/os/logging) output from the device. Information about any Approov token fetched or an error is printed, e.g. `Approov: Approov token for host: https://approov.io : {"anno":["debug","allow-debug"],"did":"/Ja+kMUIrmd0wc+qECR0rQ==","exp":1589484841,"ip":"2a01:4b00:f42d:2200:e16f:f767:bc0a:a73c","sip":"YM8iTv"}`. You can easily [check](https://approov.io/docs/latest/approov-usage-documentation/#loggable-tokens) the validity.
+* Look at the [`syslog`](https://developer.apple.com/documentation/os/logging) output from the device. Information about any Approov token fetched, or an error, is printed — e.g. `Approov: Approov token for host: https://approov.io : {"anno":["debug","allow-debug"],"did":"/Ja+kMUIrmd0wc+qECR0rQ==","exp":1589484841,"ip":"2a01:4b00:f42d:2200:e16f:f767:bc0a:a73c","sip":"YM8iTv"}`. You can easily [check](https://approov.io/docs/latest/approov-usage-documentation/#loggable-tokens) its validity.
 * Use `approov metrics` to see [Live Metrics](https://approov.io/docs/latest/approov-usage-documentation/#metrics-graphs) of the cause of failure.
-* You can use a debugger or emulator/simulator and get valid Approov tokens on a specific device by ensuring you are [forcing a device ID to pass](https://approov.io/docs/latest/approov-usage-documentation/#forcing-a-device-id-to-pass). As a shortcut, you can use the `latest` as discussed so that the `device ID` doesn't need to be extracted from the logs or an Approov token.
-* Also, you can use a debugger or Android emulator and get valid Approov tokens on any device if you [mark the signing certificate as being for development](https://approov.io/docs/latest/approov-usage-documentation/#development-app-signing-certificates).
+* You can use a debugger or emulator/simulator and get valid Approov tokens on a specific device by [forcing a device ID to pass](https://approov.io/docs/latest/approov-usage-documentation/#forcing-a-device-id-to-pass). As a shortcut, you can use `latest` so that the `device ID` doesn't need to be extracted from the logs or an Approov token.
+* You can also use a debugger or Android emulator and get valid Approov tokens on any device if you [mark the signing certificate as being for development](https://approov.io/docs/latest/approov-usage-documentation/#development-app-signing-certificates). To attest on such a device, obtain a development key with `approov devkey -create` and register it in the app by uncommenting `ApproovService.SetDevKey("<your-dev-key>");` in the constructor.
+* For more detail while debugging, enable verbose Approov logging by uncommenting `ApproovService.SetLoggingLevel(ApproovLogLevel.Debug);` in the constructor.
+
+## SHAPES APP WITH MESSAGE SIGNING (v5)
+
+> **This is Stage 3 (endpoint `v5`).** It builds directly on the Stage 2 changes you just made.
+
+Message signing adds a second, independent proof to each request: on top of the Approov token, the app attaches an [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) HTTP message signature (`Signature` / `Signature-Input` headers) that the backend verifies. The `v5/shapes` endpoint requires the API key **and** a valid Approov token **and** a valid message signature.
+
+Apply the following edits in `MainPage.xaml.cs`:
+
+**1. Change the endpoint version:**
+
+```C#
+const string ENDPOINT_VERSION = "v5";
+```
+
+**2. Uncomment the message-signing namespace** at the top of the file:
+
+```C#
+using Approov.Util.Sig;
+```
+
+**3. Register the default message signer** in the constructor, right after creating the `ApproovHttpClient`:
+
+```C#
+ApproovService.SetServiceMutator(
+    new ApproovDefaultMessageSigning().SetDefaultFactory(
+        ApproovDefaultMessageSigning.GenerateDefaultSignatureParametersFactory()));
+```
+
+The default configuration uses **installation message signing** (`ecdsa-p256-sha256`) and signs over `@method`, `@target-uri` and the `Approov-Token` header, with `created` and a short `expires` lifetime. See [USAGE](https://github.com/approov/approov-service-net-httpclient/blob/main/USAGE.md#http-message-signing) to customize the covered components or switch to account signing.
+
+**Enable message signing for your account** so the backend can verify the signature:
+
+```
+approov message-signing -h
+```
+
+Use the reported options to enable installation message signing for `shapes.approov.io`, then rebuild and run.
+
+Press the `Get Shape` button. A shape with an `OK` status means the API key, the Approov token **and** the message signature were all accepted by `v5/shapes`.
 
 ## SHAPES APP WITH SECRETS PROTECTION
 
-This section provides an illustration of an alternative option for Approov protection if you are not able to modify the backend to add an Approov Token check. 
+This section illustrates an alternative option for Approov protection when you are **not able to modify the backend** to add an Approov token check. Instead of verifying a token server-side, Approov protects the API key itself: the key is removed from the app and delivered at runtime only to app instances that pass attestation. This substantially improves your protection and prevents the key being abused if it is extracted from the app.
 
-Firstly, revert any previous change to `shapesURL` to using `https://shapes.approov.io/v1/shapes/` that simply checks for an API key. The `shapes_api_key` should also be changed to `shapes_api_key_placeholder`, removing the actual API key out of the code:
+The steps below are a worked example for the Shapes app. See [SECRETS PROTECTION](SECRETS-PROTECTION.md) for the full set of options (query-parameter substitution, fetching secrets explicitly, handling rejections and more).
+
+This continues from the Approov integration you added in [MODIFY THE APP TO USE APPROOV](#modify-the-app-to-use-approov). Keep `ApproovService.Initialize(...)` and `new ApproovHttpClient()` in place — secret substitution only works over the Approov networking stack. The `shapes.approov.io` domain you already added with `approov api -add` is reused here.
+
+**1. Point back at the API-key-only endpoint.** The `v1/shapes` endpoint checks only the API key (no Approov token), so set the endpoint version back to `v1` in `MainPage.xaml.cs`:
 
 ```C#
-/* The Shapes URL */
-static string endpointVersion = "v1";
-string shapes_api_key = "shapes_api_key_placeholder";
-....
-ApproovService.AddSubstitutionHeader("Api-Key", null);
-httpClient.DefaultRequestHeaders.Add("Api-Key", shapes_api_key);
+const string ENDPOINT_VERSION = "v1";
 ```
 
-You must inform Approov that it should map `shapes_api_key_placeholder` to `yXClypapWNHIifHUWmBIyPFAm` (the actual API key) in requests as follows:
+**2. Remove the real API key from the app.** Replace the hard-coded key with a placeholder value, so the shipped app no longer contains the secret:
+
+```C#
+// before
+const string SHAPES_API_KEY = "yXClypapWNHIifHUWmBIyPFAm";
+// after
+const string SHAPES_API_KEY = "shapes_api_key_placeholder";
+```
+
+**3. Register the real secret with Approov.** Tell Approov to map the placeholder to the real API key. Approov will deliver the real value only to apps that pass attestation:
 
 ```
 approov secstrings -addKey shapes_api_key_placeholder -predefinedValue yXClypapWNHIifHUWmBIyPFAm
@@ -213,10 +277,30 @@ approov secstrings -addKey shapes_api_key_placeholder -predefinedValue yXClypapW
 
 > Note that this command requires an [admin role](https://approov.io/docs/latest/approov-usage-documentation/#account-access-roles).
 
-Build and run the app and press the `Get Shape` button. You should now see this (or another shape):
+**4. Enable header substitution in the app.** Tell the `ApproovService` that the `Api-Key` header is subject to substitution. Uncomment this line in the constructor (it appears just below the STAGE blocks):
+
+```C#
+ApproovService.AddSubstitutionHeader("Api-Key", null);
+```
+
+At runtime the interceptor rewrites the outgoing `Api-Key` header, swapping `shapes_api_key_placeholder` for the real key — but only when the app passes attestation.
+
+**5. Build, run and press the `Get Shape` button.** You should now see a shape (or another shape):
 
 <p>
     <img src="readme-images/shapes-good.png" width="256" title="Shapes Good">
 </p>
 
-This means that the app is able to access the API key, even though it is no longer embedded in the app configuration, and provide it to the shapes request.
+This means the app obtained the real API key at runtime and used it to call the Shapes endpoint, even though the key is no longer embedded anywhere in the app.
+
+## NEXT STEPS
+
+You have now protected an app end to end with Approov. To apply this to your own app:
+
+* [README](README.md) — the concise integration steps for adding Approov to your own MAUI Refit app.
+* [API PROTECTION](API-PROTECTION.md) — protect your own backend APIs with server-side Approov token checks (the approach used in Stages 2–3).
+* [SECRETS PROTECTION](SECRETS-PROTECTION.md) — the full reference for protecting API keys and other secrets when you cannot change the backend.
+* [USAGE](USAGE.md) — practical patterns including dependency-injection setup, bypass mode, and error handling.
+* [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/main/REFERENCE.md) — the complete `ApproovService` API surface.
+
+If you have any questions, [contact Approov support](https://approov.io/contact) — we are happy to help.
