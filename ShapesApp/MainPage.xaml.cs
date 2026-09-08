@@ -54,56 +54,70 @@ public partial class MainPage : ContentPage
     {
         InitializeComponent();
 
-        // ── STAGE 1 · v1 — no Approov ────────────────────────────────────────
-        // Runs against the unprotected endpoint using the hard-coded API key.
-        httpClient = new HttpClient();
-
-        // ── STAGE 2 · v3 — Approov API protection ────────────────────────────
-        //   1. set ENDPOINT_VERSION = "v3"
-        //   2. comment out the STAGE 1 `new HttpClient()` line above
-        //   3. uncomment `using Approov;` and the two lines below
-        //ApproovService.Initialize(APPROOV_CONFIG);
-        //httpClient = new ApproovHttpClient();
-
-        // ── STAGE 3 · v5 — add HTTP message signing ──────────────────────────
-        // In addition to STAGE 2:
-        //   1. set ENDPOINT_VERSION = "v5"
-        //   2. uncomment `using Approov.Util.Sig;`
-        //   3. uncomment the registration below (install signing is the default)
-        //ApproovService.SetServiceMutator(
-        //    new ApproovDefaultMessageSigning().SetDefaultFactory(
-        //        ApproovDefaultMessageSigning.GenerateDefaultSignatureParametersFactory()));
-
-        // SECRETS-PROTECTION (alternative to STAGE 2+): keep the STAGE 2 Approov
-        // lines above in place, set ENDPOINT_VERSION = "v1" and
-        // SHAPES_API_KEY = "shapes_api_key_placeholder", then uncomment the line
-        // below to have Approov substitute the real key at runtime. See
-        // SECRETS-PROTECTION.md.
-        //ApproovService.AddSubstitutionHeader("Api-Key", null);
-
-        // Tip (STAGE 2+): to attest on a device/emulator that is not registered via an
-        // app signing certificate, obtain a dev key with `approov devkey -create` and add:
-        //ApproovService.SetDevKey("<your-dev-key>");
-        // Verbose Approov logging while testing:
-        //ApproovService.SetLoggingLevel(ApproovLogLevel.Debug);
-
-        // The Shapes API key travels on every request (checked by v1 and v5).
-        httpClient.BaseAddress = new Uri(BaseUrl);
-        httpClient.DefaultRequestHeaders.Add("Api-Key", SHAPES_API_KEY);
-
         try
         {
+            // ── STAGE 1 · v1 — no Approov ────────────────────────────────────────
+            // Runs against the unprotected endpoint using the hard-coded API key.
+            httpClient = new HttpClient();
+
+            // ── STAGE 2 · v3 — Approov API protection ────────────────────────────
+            //   1. set ENDPOINT_VERSION = "v3"
+            //   2. comment out the STAGE 1 `new HttpClient()` line above
+            //   3. uncomment `using Approov;` and switch the field type above
+            //   4. set APPROOV_CONFIG and uncomment the three lines below
+            //ApproovService.Initialize(APPROOV_CONFIG);
+            //ApproovService.SetServiceMutator(ApproovServiceMutatorDefault.Shared);
+            //httpClient = new ApproovHttpClient();
+
+            // The service layer signs by default. The base mutator above explicitly
+            // disables signing for this token-only stage; STAGE 3 replaces it below.
+
+            // ── STAGE 3 · v5 — add HTTP message signing ──────────────────────────
+            // In addition to STAGE 2:
+            //   1. set ENDPOINT_VERSION = "v5"
+            //   2. uncomment `using Approov.Util.Sig;`
+            //   3. uncomment the registration below to enable installation signing
+            //ApproovService.SetServiceMutator(
+            //    new ApproovDefaultMessageSigning().SetDefaultFactory(
+            //        ApproovDefaultMessageSigning.GenerateDefaultSignatureParametersFactory()));
+
+            // Negative control: keep v5 and the STAGE 2 base mutator, but comment out
+            // all three STAGE 3 registration lines above. The request must be rejected.
+
+            // SECRETS-PROTECTION (alternative to STAGE 2+): keep the STAGE 2 Approov
+            // lines above in place, set ENDPOINT_VERSION = "v1" and
+            // SHAPES_API_KEY = "shapes_api_key_placeholder", then uncomment the line
+            // below to have Approov substitute the real key at runtime. See
+            // SECRETS-PROTECTION.md.
+            //ApproovService.AddSubstitutionHeader("Api-Key", null);
+
+            // Tip (STAGE 2+): to attest on a device/emulator that is not registered via an
+            // app signing certificate, obtain a dev key with `approov devkey -create` and add:
+            //ApproovService.SetDevKey("<your-dev-key>");
+            // Verbose Approov logging while testing:
+            //ApproovService.SetLoggingLevel(ApproovLogLevel.Debug);
+
+            // The Shapes API key travels on every request (checked by v1 and v5).
+            httpClient.BaseAddress = new Uri(BaseUrl);
+            httpClient.DefaultRequestHeaders.Add("Api-Key", SHAPES_API_KEY);
+
             apiClient = RestService.For<IApiInterface>(httpClient);
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Exception during RestService: " + ex.Message);
+            Console.WriteLine("Exception initializing Shapes API client: " + ex);
+            helloBtn.IsEnabled = false;
+            shapeButton.IsEnabled = false;
+            UpdateUI("confused.png", "Unable to initialize Shapes API client: " + ex.Message);
         }
     }
 
     // "Hello" button — calls the unprotected /hello endpoint to check connectivity.
     private async void OnHelloButtonClicked(object sender, EventArgs e)
     {
+        if (apiClient == null)
+            return;
+
         try
         {
             var values = await apiClient.GetHello().ConfigureAwait(false);
@@ -112,9 +126,10 @@ public partial class MainPage : ContentPage
             else
                 UpdateUI("confused.png", "Error getting Hello from Shapes server");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            UpdateUI("confused.png", "Exception getting Hello from Shapes server");
+            Console.WriteLine("Exception getting Hello from Shapes server: " + ex);
+            UpdateUI("confused.png", "Exception getting Hello from Shapes server: " + ex.Message);
         }
     }
 
@@ -122,6 +137,9 @@ public partial class MainPage : ContentPage
     // (from Stage 2 onward). A shape + "OK" means the request was accepted.
     private async void OnShapeButtonClicked(object sender, EventArgs e)
     {
+        if (apiClient == null)
+            return;
+
         try
         {
             var values = await apiClient.GetShape().ConfigureAwait(false);

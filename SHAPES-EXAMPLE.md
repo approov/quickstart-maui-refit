@@ -29,6 +29,30 @@ There is also a **Secrets Protection** section at the end. This is an *alternati
 
 Work through the sections in order. Each one tells you exactly which lines to change and ends with a short note on what you just achieved.
 
+## ADD THE APPROOV SERVICE LAYER
+
+Complete this setup before the first build, including Stage 1: the project references the service layer even while its runtime integration is commented out.
+
+The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it as a sibling of this quickstart repository and use the revision specified by this guide (declared service-layer version `3.5.5`):
+
+```
+git clone https://github.com/approov/approov-service-net-httpclient.git
+cd approov-service-net-httpclient
+git checkout 3584257422de1ca9ee7cb7a78adad862cb05a27e
+```
+
+The `ShapesApp` project already contains the required `ProjectReference`, which expects the service layer repository to be located alongside this one:
+
+```xml
+<ProjectReference Include="..\..\approov-service-net-httpclient\ApproovService.MAUI\ApproovService.MAUI.csproj" />
+```
+
+This service layer is an open source wrapper that lets you use Approov with `HttpClient`. The native Approov SDKs are **not bundled**. Complete the [native SDK download steps](README.md#obtain-the-native-sdks-before-building) for the platforms you intend to build, using SDK `3.5.3` and the exact paths shown there. The wrapper works alongside the existing `Refit` package and declares its own Android dependencies; no Approov-specific Refit package is required.
+
+Your project structure should now look like this:
+
+![Final Project View](readme-images/final-project-view.png)
+
 ## RUNNING THE SHAPES APP WITHOUT APPROOV
 
 > **This is Stage 1.** The app is unprotected — we run it first so you can see the starting point before Approov is added.
@@ -58,26 +82,6 @@ This checks connectivity by calling `https://shapes.approov.io/v1/hello`. Now pr
 This calls `https://shapes.approov.io/v1/shapes` to get the name of a random shape. It succeeds (HTTP status `200`) because this endpoint is protected only by an API key that is hard-coded into the app — and which could therefore be extracted from the app by an attacker.
 
 *What just happened:* the app works, but its API key is exposed. Over the next stages you will add Approov so the backend can be sure requests come from a genuine, untampered instance of your app.
-
-## ADD THE APPROOV SERVICE LAYER
-
-The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it as a sibling of this quickstart repository:
-
-```
-git clone https://github.com/approov/approov-service-net-httpclient.git
-```
-
-The `ShapesApp` project already contains the required `ProjectReference`, which expects the service layer repository to be located alongside this one:
-
-```xml
-<ProjectReference Include="..\..\approov-service-net-httpclient\ApproovService.MAUI\ApproovService.MAUI.csproj" />
-```
-
-This service layer is an open source wrapper that lets you use Approov with `HttpClient`. It bundles the native Approov SDKs for both Android and iOS, so no additional SDK setup is required. It works alongside the existing `Refit` package — no additional OkHttp or Approov-specific Refit package is required.
-
-Your project structure should now look like this:
-
-![Final Project View](readme-images/final-project-view.png)
 
 ## ENSURE THE SHAPES API IS PROTECTED
 
@@ -120,7 +124,7 @@ using Approov;
 private static ApproovHttpClient httpClient;
 ```
 
-**5. Initialize Approov and create the client.** In the constructor, comment out the Stage 1 line and uncomment the two Stage 2 lines:
+**5. Initialize Approov, disable signing for this stage and create the client.** In the constructor, comment out the Stage 1 line and uncomment the three Stage 2 lines:
 
 ```C#
 // STAGE 1 — comment this out
@@ -128,10 +132,13 @@ private static ApproovHttpClient httpClient;
 
 // STAGE 2 — uncomment these
 ApproovService.Initialize(APPROOV_CONFIG);
+ApproovService.SetServiceMutator(ApproovServiceMutatorDefault.Shared);
 httpClient = new ApproovHttpClient();
 ```
 
-`ApproovHttpClient` is a drop-in replacement for `HttpClient`, so it is passed to `RestService.For<IApiInterface>(httpClient)` exactly as before. It automatically adds the `Approov-Token` header to each request and pins the TLS connection, so that no Man-in-the-Middle can eavesdrop on the communication.
+The pinned service layer attempts message signing by default. `ApproovServiceMutatorDefault.Shared` explicitly selects the base mutator without signing, so Stage 2 demonstrates token-only protection. Keep this line in place when moving to Stage 3; the later signer registration will replace it. Reapply custom configuration after initialization, which resets the service mutator.
+
+`ApproovHttpClient` is a drop-in replacement for `HttpClient`, so it is passed to `RestService.For<IApiInterface>(httpClient)` exactly as before. It automatically adds the `Approov-Token` header and applies TLS certificate pinning to protected requests.
 
 *What just happened:* the app is now wired up to fetch and send Approov tokens. Before it can pass attestation on a real device, Approov needs to recognize the certificate you sign the app with — that is the next step.
 
@@ -226,7 +233,7 @@ const string ENDPOINT_VERSION = "v5";
 using Approov.Util.Sig;
 ```
 
-**3. Register the default message signer** in the constructor, right after creating the `ApproovHttpClient`:
+**3. Register the message signer** in the constructor, right after creating the `ApproovHttpClient`. Uncomment all three lines in the Stage 3 registration block. This replaces the base mutator selected in Stage 2:
 
 ```C#
 ApproovService.SetServiceMutator(
@@ -234,17 +241,29 @@ ApproovService.SetServiceMutator(
         ApproovDefaultMessageSigning.GenerateDefaultSignatureParametersFactory()));
 ```
 
-The default configuration uses **installation message signing** (`ecdsa-p256-sha256`) and signs over `@method`, `@target-uri` and the `Approov-Token` header, with `created` and a short `expires` lifetime. See [USAGE](https://github.com/approov/approov-service-net-httpclient/blob/main/USAGE.md#http-message-signing) to customize the covered components or switch to account signing.
+The factory uses **installation message signing** (`ecdsa-p256-sha256`) over `@method`, `@target-uri`, the Approov token and trace-ID headers, plus optional `Authorization`, `Content-Length` and `Content-Type` headers when present. It includes `created` and a 15-second `expires` lifetime. See [USAGE](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/USAGE.md#http-message-signing) for body-digest behavior, custom covered components and account signing.
 
-**Enable message signing for your account** so the backend can verify the signature:
+**4. Enable installation public-key inclusion for your Approov account** so the backend can verify the signature:
 
 ```
-approov message-signing -h
+approov policy -setInstallPubKey on
 ```
 
-Use the reported options to enable installation message signing for `shapes.approov.io`, then rebuild and run.
+This account-wide policy change requires an `admin` role and CLI confirmation. It includes the installation public key in the token's `ipk` claim; it is not a per-domain switch. See [installation-signing setup](https://approov.io/docs/latest/approov-usage-documentation/#enabling-installation-message-signing) for details. Check the setting with `approov policy -getInstallPubKey`, then rebuild and run.
 
 Press the `Get Shape` button. A shape with an `OK` status means the API key, the Approov token **and** the message signature were all accepted by `v5/shapes`.
+
+### Verify that an unsigned request is rejected
+
+Keep `ENDPOINT_VERSION = "v5"`, the API key, your Approov configuration and the account policy unchanged. Comment out all three lines of the Stage 3 signer registration. Keep the Stage 2 line below active, after `Initialize`:
+
+```C#
+ApproovService.SetServiceMutator(ApproovServiceMutatorDefault.Shared);
+```
+
+Rebuild, restart the app and press `Get Shape`. The request still carries an Approov token, but has no message signature, so `v5/shapes` should reject it. Record the actual response status; an HTTP `200` means the negative control has not demonstrated signature enforcement.
+
+Uncomment the Stage 3 registration again, rebuild and restart. Confirm that the signed request succeeds. Simply removing a custom signer without selecting the base mutator, or passing `null` to `SetServiceMutator`, restores default signing and does not create an unsigned control.
 
 ## SHAPES APP WITH SECRETS PROTECTION
 
@@ -301,6 +320,6 @@ You have now protected an app end to end with Approov. To apply this to your own
 * [API PROTECTION](API-PROTECTION.md) — protect your own backend APIs with server-side Approov token checks (the approach used in Stages 2–3).
 * [SECRETS PROTECTION](SECRETS-PROTECTION.md) — the full reference for protecting API keys and other secrets when you cannot change the backend.
 * [USAGE](USAGE.md) — practical patterns including dependency-injection setup, bypass mode, and error handling.
-* [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/main/REFERENCE.md) — the complete `ApproovService` API surface.
+* [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/REFERENCE.md) — the complete `ApproovService` API surface.
 
 If you have any questions, [contact Approov support](https://approov.io/contact) — we are happy to help.

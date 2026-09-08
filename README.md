@@ -10,10 +10,12 @@ Note that the minimum OS requirement is iOS 15 and Android API 23 (Android 6.0).
 
 ## ADDING THE APPROOV SERVICE LAYER
 
-The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it alongside your app:
+The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. This quickstart uses service-layer revision `3584257422de1ca9ee7cb7a78adad862cb05a27e` (declared version `3.5.5`). Clone it alongside your app and check out that revision so the APIs and signing behavior match this guide:
 
 ```
 git clone https://github.com/approov/approov-service-net-httpclient.git
+cd approov-service-net-httpclient
+git checkout 3584257422de1ca9ee7cb7a78adad862cb05a27e
 ```
 
 Then add a `ProjectReference` to your app's `.csproj`:
@@ -24,7 +26,18 @@ Then add a `ProjectReference` to your app's `.csproj`:
 </ItemGroup>
 ```
 
-This project is an open source wrapper layer that allows you to easily use Approov with `HttpClient` and Refit. It includes the native [Approov SDK](https://github.com/approov/approov-ios-sdk) for iOS and the Approov Android SDK for Android, so no additional setup is required. The service layer works alongside the `Refit` package in the same project — no separate Approov-specific Refit package is required.
+This project is an open source wrapper layer that allows you to use Approov with `HttpClient` and Refit. The native Approov SDKs are obtained separately from your Approov account. The service layer works alongside the `Refit` package in the same project — no separate Approov-specific Refit package is required.
+
+### Obtain the native SDKs before building
+
+The pinned service layer targets native Approov SDK **3.5.3**, including the iOS binding definitions. With an authenticated Approov CLI, run `approov sdk -list` and select the Android and iOS library IDs for that version. From the **service-layer repository root**, download the SDK for each platform you will build:
+
+```sh
+approov sdk -getLibrary libs/approov.aar -libraryID <android-3.5.3-library-id>
+approov sdk -getLibrary iOS.Binding/libs/Approov.xcframework -libraryID <ios-3.5.3-library-id>
+```
+
+Replace the angle-bracket placeholders with the library IDs returned by the CLI. The file names and locations must match exactly. See the service layer's [Android SDK instructions](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/libs/README.md) and [iOS SDK instructions](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/iOS.Binding/libs/README.md) for verification steps. Return to your app directory before building.
 
 ## ANDROID MANIFEST CHANGES
 
@@ -43,11 +56,17 @@ Before using `ApproovService`, initialize it with a configuration string. This w
 
 ```csharp
 ApproovService.Initialize("<enter-your-config-string-here>");
-var httpClient = new ApproovHttpClient();
+var httpClient = new ApproovHttpClient
+{
+    BaseAddress = new Uri("https://shapes.approov.io/v3")
+};
+httpClient.DefaultRequestHeaders.Add("Api-Key", "yXClypapWNHIifHUWmBIyPFAm");
 apiClient = RestService.For<IApiInterface>(httpClient);
 ```
 
-`ApproovHttpClient` is a drop-in replacement for `HttpClient`. It automatically adds the `Approov-Token` header, applies TLS certificate pinning, and substitutes protected header and query parameter values on every request.
+This example uses the Shapes app's `IApiInterface`, whose paths are `/hello/` and `/shapes/`. Refit appends them to the versioned base URL. Replace the base URL, interface and demonstration API key when integrating your own API.
+
+`ApproovHttpClient` is a drop-in replacement for `HttpClient`. It automatically adds the `Approov-Token` header, applies TLS certificate pinning, and substitutes protected header and query parameter values on protected requests. The pinned service layer also attempts installation message signing by default. The [Shapes walkthrough](SHAPES-EXAMPLE.md) explicitly disables signing in Stage 2 and enables it in Stage 3 to demonstrate the two protections separately.
 
 ## ERROR TYPES
 
@@ -76,4 +95,4 @@ To protect your APIs and/or secrets there are further steps. Approov provides tw
 
 See [USAGE](USAGE.md) for practical integration patterns including DI setup, bypass mode, and error handling.
 
-See [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/main/REFERENCE.md) for the full `ApproovService` API surface.
+See [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/REFERENCE.md) for the full `ApproovService` API surface.

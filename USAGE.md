@@ -1,13 +1,17 @@
 # Usage
 
-This document covers common patterns for integrating `Approov.Service.Maui` into a .NET MAUI app using [`Refit`](https://github.com/reactiveui/refit). For the full API reference see the [service layer USAGE.md](https://github.com/approov/approov-service-net-httpclient/blob/main/USAGE.md).
+This document covers common patterns for integrating `Approov.Service.Maui` into a .NET MAUI app using [`Refit`](https://github.com/reactiveui/refit). For the full API reference see the [service layer USAGE.md](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/USAGE.md).
 
 ## Setting Up in MauiProgram.cs
+
+Complete the [service-layer and native SDK setup](README.md#adding-the-approov-service-layer) first. These examples use the Shapes app's `IApiInterface`, whose paths are `/hello/` and `/shapes/`, so the base URL includes the endpoint version. The API key below is the public Shapes demonstration key; replace it and the endpoint when using your own API.
 
 Initialize `ApproovService` once at application startup in `MauiProgram.cs`, before any HTTP client is created:
 
 ```csharp
 using Approov;
+using CommunityToolkit.Maui;
+using Microsoft.Extensions.DependencyInjection;
 using Refit;
 
 public static class MauiProgram
@@ -28,8 +32,14 @@ public static class MauiProgram
 
         // Register a Refit client backed by ApproovHttpClient
         builder.Services.AddSingleton<IApiInterface>(_ =>
-            RestService.For<IApiInterface>(
-                new ApproovHttpClient { BaseAddress = new Uri("https://shapes.approov.io") }));
+        {
+            var httpClient = new ApproovHttpClient
+            {
+                BaseAddress = new Uri("https://shapes.approov.io/v3")
+            };
+            httpClient.DefaultRequestHeaders.Add("Api-Key", "yXClypapWNHIifHUWmBIyPFAm");
+            return RestService.For<IApiInterface>(httpClient);
+        });
 
         return builder.Build();
     }
@@ -56,11 +66,14 @@ For simpler apps, pass `ApproovHttpClient` directly to `RestService.For<T>` afte
 
 ```csharp
 ApproovService.Initialize("<enter-your-config-string-here>");
-var httpClient = new ApproovHttpClient { BaseAddress = new Uri("https://shapes.approov.io") };
+var httpClient = new ApproovHttpClient { BaseAddress = new Uri("https://shapes.approov.io/v3") };
+httpClient.DefaultRequestHeaders.Add("Api-Key", "yXClypapWNHIifHUWmBIyPFAm");
 IApiInterface apiClient = RestService.For<IApiInterface>(httpClient);
 ```
 
 `ApproovHttpClient` is a subclass of `HttpClient`. No separate Approov-specific Refit package is required — pass it directly.
+
+The pinned service layer attempts installation message signing by default. To demonstrate token-only protection, call `ApproovService.SetServiceMutator(ApproovServiceMutatorDefault.Shared)` after initialization. See [Stage 3 and its negative control](SHAPES-EXAMPLE.md#shapes-app-with-message-signing-v5) for enabling and explicitly disabling signing. Reapply custom configuration after any subsequent initialization, which resets the service mutator.
 
 ## Bypass Mode for Development
 
@@ -95,12 +108,12 @@ Register a header for secret substitution after initialization. The header value
 ApproovService.Initialize("<enter-your-config-string-here>");
 ApproovService.AddSubstitutionHeader("Api-Key", null);
 
-var httpClient = new ApproovHttpClient();
+var httpClient = new ApproovHttpClient { BaseAddress = new Uri("https://shapes.approov.io/v1") };
 httpClient.DefaultRequestHeaders.Add("Api-Key", "shapes_api_key_placeholder"); // replaced at runtime
 IApiInterface apiClient = RestService.For<IApiInterface>(httpClient);
 ```
 
-See [SECRETS-PROTECTION.md](SECRETS-PROTECTION.md) for full setup instructions.
+Before running this snippet, register `shapes.approov.io` with Approov and map `shapes_api_key_placeholder` to the Shapes demonstration key. Follow the [worked secrets-protection example](SHAPES-EXAMPLE.md#shapes-app-with-secrets-protection) for those steps, or [SECRETS-PROTECTION.md](SECRETS-PROTECTION.md) for your own API.
 
 ## Handling ApproovException
 

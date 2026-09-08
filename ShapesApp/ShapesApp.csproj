@@ -48,8 +48,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Production: when Approov.Service.Maui is published to NuGet.org, replace the ProjectReference below with:
-		     <PackageReference Include="Approov.Service.Maui" Version="3.5.11" /> -->
+		<!-- README.md specifies service revision 3584257422de1ca9ee7cb7a78adad862cb05a27e
+		     (declared version 3.5.5) and the required native SDK downloads.
+		     ProjectReference resolves the local checkout; it does not pin its revision. -->
 		<ProjectReference Include="..\..\approov-service-net-httpclient\ApproovService.MAUI\ApproovService.MAUI.csproj" />
 	</ItemGroup>
 
