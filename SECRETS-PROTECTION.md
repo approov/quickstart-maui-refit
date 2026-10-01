@@ -53,30 +53,26 @@ In some cases it might not be possible to automatically substitute a secret in a
 
 In this case it is possible to make an explicit call at runtime to obtain the secret value, for apps passing attestation. Here is an example for using the required method in `ApproovService`:
 
-```C#
-import io.approov.service.okhttp.ApproovException;
-import io.approov.service.okhttp.ApproovNetworkException;
-import io.approov.service.okhttp.ApproovRejectionException;
-
-...
-
-String secret;
-try {
-    secret = ApproovService.FetchSecureString("your-secret-name", null);
+```csharp
+try
+{
+    var result = ApproovService.FetchSecureString("your-secret-name", null);
+    string? secret = result.SecureString;
+    // use secret as required, but never cache or store its value
+    // secret will be null if the provided key is not defined
 }
-catch(ApproovRejectionException e) {
-    // failure due to the attestation being rejected, e.ARC and e.RejectionReasons may be used
-    // to present information to the user (note e.RejectionReasons is only available if the
-    // feature is enabled, otherwise it is always an empty string)
+catch (RejectionException e)
+{
+    // attestation rejected; e.ARC and e.RejectionReasons contain device info
 }
-catch(ApproovNetworkException e) {
-    // failure due to a potentially temporary networking issue, allow for a user initiated retry
+catch (NetworkingErrorException)
+{
+    // transient networking issue; allow for user-initiated retry
 }
-catch(ApproovException e) {
-   // a more permanent error, see e.getMessage()
+catch (ApproovException e)
+{
+    // more permanent error; see e.Message
 }
-// use secret as required, but never cache or store its value - note secret will be null if
-// the provided secret name is not defined
 ```
 
 
