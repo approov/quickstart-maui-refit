@@ -33,12 +33,12 @@ Work through the sections in order. Each one tells you exactly which lines to ch
 
 Complete this setup before the first build, including Stage 1: the project references the service layer even while its runtime integration is commented out.
 
-The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it as a sibling of this quickstart repository and use the revision specified by this guide (declared service-layer version `3.5.5`):
+The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. Clone it as a sibling of this quickstart repository and check out the tag that this guide uses (`3.5.5`):
 
 ```
 git clone https://github.com/approov/approov-service-net-httpclient.git
 cd approov-service-net-httpclient
-git checkout 3584257422de1ca9ee7cb7a78adad862cb05a27e
+git checkout 3.5.5
 ```
 
 The `ShapesApp` project already contains the required `ProjectReference`, which expects the service layer repository to be located alongside this one:
@@ -241,7 +241,7 @@ ApproovService.SetServiceMutator(
         ApproovDefaultMessageSigning.GenerateDefaultSignatureParametersFactory()));
 ```
 
-The factory uses **installation message signing** (`ecdsa-p256-sha256`) over `@method`, `@target-uri`, the Approov token and trace-ID headers, plus optional `Authorization`, `Content-Length` and `Content-Type` headers when present. It includes `created` and a 15-second `expires` lifetime. See [USAGE](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/USAGE.md#http-message-signing) for body-digest behavior, custom covered components and account signing.
+The factory uses **installation message signing** (`ecdsa-p256-sha256`) over `@method`, `@target-uri`, the Approov token and trace-ID headers, plus optional `Authorization`, `Content-Length` and `Content-Type` headers when present. It includes `created` and a 15-second `expires` lifetime. See [USAGE](https://github.com/approov/approov-service-net-httpclient/blob/3.5.5/USAGE.md#http-message-signing) for body-digest behavior, custom covered components and account signing.
 
 **4. Enable installation public-key inclusion for your Approov account** so the backend can verify the signature:
 
@@ -250,6 +250,8 @@ approov policy -setInstallPubKey on
 ```
 
 This account-wide policy change requires an `admin` role and CLI confirmation. It includes the installation public key in the token's `ipk` claim; it is not a per-domain switch. See [installation-signing setup](https://approov.io/docs/latest/approov-usage-documentation/#enabling-installation-message-signing) for details. Check the setting with `approov policy -getInstallPubKey`, then rebuild and run.
+
+**iOS simulator.** The `ShapesApp` project includes `Platforms/iOS/Entitlements.plist`, which gives the app a keychain access group (`$(AppIdentifierPrefix)$(CFBundleIdentifier)`). The Approov SDK stores its installation key in the keychain. Without this entitlement, the simulator rejects the key (`errSecMissingEntitlement`, `-34018`). The request then goes out without a signature, and the service layer logs `message signing failed; proceeding unsigned`. If you add installation message signing to your own app, add the same entitlement and set `CodesignEntitlements` for iOS, as `ShapesApp.csproj` does.
 
 Press the `Get Shape` button. A shape with an `OK` status means the API key, the Approov token **and** the message signature were all accepted by `v5/shapes`.
 
@@ -320,6 +322,6 @@ You have now protected an app end to end with Approov. To apply this to your own
 * [API PROTECTION](API-PROTECTION.md) — protect your own backend APIs with server-side Approov token checks (the approach used in Stages 2–3).
 * [SECRETS PROTECTION](SECRETS-PROTECTION.md) — the full reference for protecting API keys and other secrets when you cannot change the backend.
 * [USAGE](USAGE.md) — practical patterns including dependency-injection setup, bypass mode, and error handling.
-* [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/REFERENCE.md) — the complete `ApproovService` API surface.
+* [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/3.5.5/REFERENCE.md) — the complete `ApproovService` API surface.
 
 If you have any questions, [contact Approov support](https://approov.io/contact) — we are happy to help.

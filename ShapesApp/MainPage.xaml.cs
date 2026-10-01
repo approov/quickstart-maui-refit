@@ -143,8 +143,8 @@ public partial class MainPage : ContentPage
         try
         {
             var values = await apiClient.GetShape().ConfigureAwait(false);
-            if (values != null && values.TryGetValue("shape", out var shape))
-                UpdateUI(shape.ToLower() + ".png", "200 OK");
+            if (values != null && values.TryGetValue("shape", out var shape) && !string.IsNullOrWhiteSpace(shape))
+                UpdateUI(shape.ToLowerInvariant() + ".png", "200 OK");
             else
                 UpdateUI("confused.png", "Error getting Shape: response json malformed");
         }

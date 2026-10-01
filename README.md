@@ -10,12 +10,12 @@ Note that the minimum OS requirement is iOS 15 and Android API 23 (Android 6.0).
 
 ## ADDING THE APPROOV SERVICE LAYER
 
-The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. This quickstart uses service-layer revision `3584257422de1ca9ee7cb7a78adad862cb05a27e` (declared version `3.5.5`). Clone it alongside your app and check out that revision so the APIs and signing behavior match this guide:
+The Approov integration is provided by the [approov-service-net-httpclient](https://github.com/approov/approov-service-net-httpclient) repository. This quickstart uses service-layer tag `3.5.5`. Clone it alongside your app and check out that tag so the APIs and signing behavior match this guide:
 
 ```
 git clone https://github.com/approov/approov-service-net-httpclient.git
 cd approov-service-net-httpclient
-git checkout 3584257422de1ca9ee7cb7a78adad862cb05a27e
+git checkout 3.5.5
 ```
 
 Then add a `ProjectReference` to your app's `.csproj`:
@@ -37,7 +37,7 @@ approov sdk -getLibrary libs/approov.aar -libraryID <android-3.5.3-library-id>
 approov sdk -getLibrary iOS.Binding/libs/Approov.xcframework -libraryID <ios-3.5.3-library-id>
 ```
 
-Replace the angle-bracket placeholders with the library IDs returned by the CLI. The file names and locations must match exactly. See the service layer's [Android SDK instructions](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/libs/README.md) and [iOS SDK instructions](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/iOS.Binding/libs/README.md) for verification steps. Return to your app directory before building.
+Replace the angle-bracket placeholders with the library IDs returned by the CLI. The file names and locations must match exactly. See the service layer's [Android SDK instructions](https://github.com/approov/approov-service-net-httpclient/blob/3.5.5/libs/README.md) and [iOS SDK instructions](https://github.com/approov/approov-service-net-httpclient/blob/3.5.5/iOS.Binding/libs/README.md) for verification steps. Return to your app directory before building.
 
 ## ANDROID MANIFEST CHANGES
 
@@ -95,4 +95,4 @@ To protect your APIs and/or secrets there are further steps. Approov provides tw
 
 See [USAGE](USAGE.md) for practical integration patterns including DI setup, bypass mode, and error handling.
 
-See [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/3584257422de1ca9ee7cb7a78adad862cb05a27e/REFERENCE.md) for the full `ApproovService` API surface.
+See [REFERENCE](https://github.com/approov/approov-service-net-httpclient/blob/3.5.5/REFERENCE.md) for the full `ApproovService` API surface.

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Lets the Approov SDK store its installation key and device ID in the keychain.
+	     Without it, the iOS simulator rejects the key (errSecMissingEntitlement, -34018) and
+	     installation message signing fails open. The build expands both variables. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
+	</array>
+</dict>
+</plist>
