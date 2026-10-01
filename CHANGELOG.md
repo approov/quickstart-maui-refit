@@ -11,5 +11,6 @@ Versions in this file identify the quickstart, independently of the service laye
 - Document installation-signing account configuration and an unsigned `v5` negative control.
 - Update the README, API reference link, secure-string fetch example and secrets-protection walkthrough; add usage examples with versioned base URLs.
 - Update Newtonsoft.Json to `13.0.3` and add Android manifest label-merge handling.
+- Update Refit from `6.3.2` to `16.3.0`, which fixes CVE-2024-51501 (GHSA-3hxg-fxwm-8gf7: CRLF injection in `[Header]`, `[HeaderCollection]` and `[Authorize]`).
 - Add an iOS keychain entitlement (`Platforms/iOS/Entitlements.plist`) so that installation message signing works on the simulator.
 - Ignore generated build outputs.
